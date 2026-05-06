@@ -178,10 +178,11 @@
       font-size: 14px;
     `;
 
-    ['light', 'medium', 'aggressive'].forEach(level => {
+    ['light', 'medium', 'aggressive', 'direct'].forEach(level => {
       const option = document.createElement('option');
       option.value = level;
-      option.textContent = level.charAt(0).toUpperCase() + level.slice(1);
+      const displayText = level === 'direct' ? 'Direct' : level.charAt(0).toUpperCase() + level.slice(1);
+      option.textContent = displayText;
       if (level === 'medium') option.selected = true;
       select.appendChild(option);
     });
@@ -312,28 +313,61 @@
       medium: new Set([
         'a', 'an', 'the', 'about', 'of', 'by', 'in', 'on', 'at', 'from', 'with', 'for',
         'very', 'really', 'quite', 'rather', 'fairly', 'somewhat',
-        'just', 'only', 'simply', 'merely', 'please', 'kindly'
+        'just', 'only', 'simply', 'merely', 'please', 'kindly', 'thanks', 'thank',
+        'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly'
       ]),
       aggressive: new Set([
         'a', 'an', 'the', 'about', 'of', 'by', 'in', 'on', 'at', 'from', 'with', 'for',
-        'or', 'and', 'but', 'is', 'are', 'was', 'were', 'be', 'been',
-        'very', 'really', 'quite', 'rather', 'fairly', 'somewhat',
-        'just', 'only', 'simply', 'merely', 'please', 'kindly', 'thank', 'thanks'
+        'or', 'and', 'but', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+        'have', 'has', 'had', 'do', 'does', 'did',
+        'very', 'really', 'quite', 'rather', 'fairly', 'somewhat', 'extremely',
+        'just', 'only', 'simply', 'merely', 'perhaps', 'maybe', 'could', 'might',
+        'please', 'kindly', 'thanks', 'thank', 'sorry',
+        'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly', 'obviously'
+      ]),
+      direct: new Set([
+        'a', 'an', 'the', 'about', 'of', 'by', 'in', 'on', 'at', 'from', 'with', 'for',
+        'or', 'and', 'but', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+        'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'can', 'could', 'should',
+        'very', 'really', 'quite', 'rather', 'fairly', 'somewhat', 'extremely',
+        'just', 'only', 'simply', 'merely', 'perhaps', 'maybe', 'certain', 'sure',
+        'please', 'kindly', 'thanks', 'thank', 'sorry', 'appreciate',
+        'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly', 'obviously',
+        'i', 'we', 'you', 'me', 'us', 'him', 'her', 'them', 'it', 'this', 'that', 'these', 'those'
       ])
     };
 
     const FILLER_PHRASES = {
       light: [],
       medium: [
-        /\b(could you|would you)\b/gi,
-        /\b(in order to)\b/gi
-      ],
-      aggressive: [
-        /\b(could you|would you|can you)\b/gi,
-        /\b(I would like|I want to|I need|I think)\b/gi,
+        /\b(could you|would you|could you please)\b/gi,
+        /\b(I would like|I would appreciate)\b/gi,
         /\b(in order to)\b/gi,
         /\b(there is|there are|there was)\b/gi,
         /\b(very much|quite a bit)\b/gi
+      ],
+      aggressive: [
+        /\b(could you|would you|can you|will you)\b/gi,
+        /\b(I would like|I want to|I need to|I think|I believe)\b/gi,
+        /\b(in order to|so as to)\b/gi,
+        /\b(there is|there are|there was|there were)\b/gi,
+        /\b(it is|it was)\b/gi,
+        /\b(very much|quite a bit|a lot)\b/gi,
+        /\b(kind of|sort of|kind|sort)\b/gi
+      ],
+      direct: [
+        /\bI\s+(would|want|need|think|believe|suppose|imagine|guess|hope)\b/gi,
+        /\b(could\s+you|would\s+you|can\s+you|will\s+you|may\s+I|might\s+I)\b/gi,
+        /\b(please|kindly)\s*,?\s+(help|assist|show|explain|tell)\b/gi,
+        /,?\s*(if\s+you\s+don't\s+mind|if\s+possible|if\s+you\s+have\s+time)\b/gi,
+        /\b(in\s+order\s+to|so\s+as\s+to|for\s+the\s+purpose\s+of)\b/gi,
+        /\b(there\s+is|there\s+are|there\s+was|there\s+were|there\s+exists)\b/gi,
+        /\b(it\s+is|it\s+was|it\s+has|it\s+being)\b/gi,
+        /\b(very\s+much|quite\s+a\s+bit|a\s+lot)\b/gi,
+        /\b(kind\s+of|sort\s+of|type\s+of|seems\s+like)\b/gi,
+        /\b(and\s+then|and\s+also|plus\s+also)\b/gi,
+        /\b(thanks?\s+(you|a\s+lot)|thank\s+you\s+very\s+much)\b/gi,
+        /\b(sorry\s+(if|for)|I\s+apologize)\b/gi
       ]
     };
 

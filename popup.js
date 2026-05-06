@@ -23,14 +23,14 @@ function estimateTokens(text) {
   return Math.max(1, tokenCount);
 }
 
-// Compression level definitions
+// Compression level definitions with enhanced phrase removal
 const COMPRESSION_LEVELS = {
   light: {
     fillerWords: new Set([
       'the', 'a', 'an'
     ]),
     fillerPhrases: [],
-    description: 'Minimal compression - removes only articles'
+    description: 'Minimal - articles only'
   },
   medium: {
     fillerWords: new Set([
@@ -43,13 +43,14 @@ const COMPRESSION_LEVELS = {
       'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly'
     ]),
     fillerPhrases: [
-      /\b(could you|would you|could you please)\b/gi,
-      /\b(I would like|I would appreciate)\b/gi,
-      /\b(in order to)\b/gi,
-      /\b(there is|there are|there was)\b/gi,
-      /\b(very much|quite a bit)\b/gi
+      /\b(could you|would you|could you please|would you mind)\b/gi,
+      /\b(I would like|I would appreciate|I would love)\b/gi,
+      /\b(I hope|I wanted|I was wondering)\b/gi,
+      /\b(in order to|so as to)\b/gi,
+      /\b(there is|there are|there was|there were)\b/gi,
+      /\b(very much|quite a bit|a lot)\b/gi
     ],
-    description: 'Balanced compression - removes filler words and politeness'
+    description: 'Balanced - removes filler & politeness'
   },
   aggressive: {
     fillerWords: new Set([
@@ -60,18 +61,55 @@ const COMPRESSION_LEVELS = {
       'very', 'really', 'quite', 'rather', 'fairly', 'somewhat', 'extremely',
       'just', 'only', 'simply', 'merely', 'perhaps', 'maybe', 'could', 'might',
       'please', 'kindly', 'thanks', 'thank', 'sorry',
-      'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly', 'obviously'
+      'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly', 'obviously', 'i', 'we', 'you', 'me'
     ]),
     fillerPhrases: [
-      /\b(could you|would you|can you|will you)\b/gi,
-      /\b(I would like|I want to|I need to|I think|I believe)\b/gi,
-      /\b(in order to|so as to)\b/gi,
-      /\b(there is|there are|there was|there were)\b/gi,
-      /\b(it is|it was)\b/gi,
-      /\b(very much|quite a bit|a lot)\b/gi,
-      /\b(kind of|sort of|kind|sort)\b/gi
+      /\b(could you|would you|can you|will you|would you please|could you please|can you please)\b/gi,
+      /\b(I would like|I would appreciate|I would love|I want to|I need to)\b/gi,
+      /\b(I think|I believe|I suppose|I imagine|I guess)\b/gi,
+      /\b(I hope|I was wondering|I wanted to ask)\b/gi,
+      /\b(in order to|so as to|for the purpose of)\b/gi,
+      /\b(there is|there are|there was|there were|there be)\b/gi,
+      /\b(it is|it was|it has been)\b/gi,
+      /\b(very much|quite a bit|a lot|so much)\b/gi,
+      /\b(kind of|sort of|type of|kind|sort)\b/gi,
+      /\b(I believe|I think|seems like|appears to be)\b/gi,
+      /\b(and then|and also|plus also)\b/gi,
+      /\b(as well|too much|too many)\b/gi
     ],
-    description: 'Maximum compression - removes many helper words'
+    description: 'Maximum - removes helpers & weak language'
+  },
+  direct: {
+    fillerWords: new Set([
+      'a', 'an', 'the',
+      'about', 'of', 'by', 'in', 'on', 'at', 'from', 'with', 'for',
+      'or', 'and', 'but', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'can', 'could', 'should', 'may', 'might',
+      'very', 'really', 'quite', 'rather', 'fairly', 'somewhat', 'extremely', 'so', 'very', 'just',
+      'just', 'only', 'simply', 'merely', 'perhaps', 'maybe', 'certain', 'sure',
+      'please', 'kindly', 'thanks', 'thank', 'sorry', 'appreciate',
+      'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly', 'obviously', 'apparently',
+      'i', 'we', 'you', 'me', 'us', 'him', 'her', 'them', 'it', 'this', 'that', 'these', 'those',
+      'well', 'now', 'then', 'also', 'still', 'however'
+    ]),
+    fillerPhrases: [
+      /\bI\s+(would|want|need|think|believe|suppose|imagine|guess|hope|was\s+wondering)\b/gi,
+      /\b(could\s+you|would\s+you|can\s+you|will\s+you|may\s+I|might\s+I)\b/gi,
+      /\b(please|kindly|humbly)\s*,?\s+(help|assist|show|explain|tell|provide|give)\b/gi,
+      /,?\s*(if\s+you\s+don't\s+mind|if\s+possible|if\s+you\s+have\s+time)\b/gi,
+      /\b(in\s+order\s+to|so\s+as\s+to|for\s+the\s+purpose\s+of|to\s+be\s+able\s+to)\b/gi,
+      /\b(there\s+is|there\s+are|there\s+was|there\s+were|there\s+exists)\b/gi,
+      /\b(it\s+is|it\s+was|it\s+has|it\s+being)\b/gi,
+      /\b(very\s+much|quite\s+a\s+bit|a\s+lot|so\s+much|so\s+many)\b/gi,
+      /\b(kind\s+of|sort\s+of|type\s+of|seems\s+like|appears\s+to\s+be|looks\s+like)\b/gi,
+      /\b(I\s+(believe|think|suppose|imagine|guess)|seems\s+like|appears\s+that|looks\s+like)\b/gi,
+      /\b(and\s+then|and\s+also|plus\s+also|in\s+addition|additionally)\b/gi,
+      /,?\s*(as\s+well|too|as\s+well\s+as|in\s+addition)\b/gi,
+      /\b(would\s+be\s+able|could\s+you\s+possibly|might\s+you\s+be\s+able)\b/gi,
+      /\b(thanks?\s+(you|a\s+lot|so\s+much)|thank\s+you\s+(very\s+much|in\s+advance))\b/gi,
+      /\b(sorry\s+(if|for)|I\s+apologize|pardon\s+me)\b/gi
+    ],
+    description: 'Ultra-Direct - get to the point immediately!'
   }
 };
 
