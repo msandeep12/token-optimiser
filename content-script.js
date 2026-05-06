@@ -145,7 +145,7 @@
     `;
 
     const stats = document.createElement('div');
-    const originalTokens = Math.ceil(selectedText.length / 3.5);
+    const originalTokens = TokenOptimizer.estimateTokens(selectedText);
     stats.innerHTML = `
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
         <div style="background: #252525; padding: 12px; border-radius: 6px;">
@@ -247,8 +247,8 @@
     // Update preview on level change
     const updatePreview = () => {
       const level = select.value;
-      const optimized = optimizeTextWithLevel(selectedText, level);
-      const optimizedTokens = Math.ceil(optimized.length / 3.5);
+      const optimized = TokenOptimizer.optimizeText(selectedText, level);
+      const optimizedTokens = TokenOptimizer.estimateTokens(optimized);
       const savings = Math.round(((originalTokens - optimizedTokens) / originalTokens) * 100);
       
       preview.value = optimized;
@@ -305,104 +305,5 @@
     document.body.appendChild(modal);
 
     updatePreview();
-  }
-
-  function optimizeTextWithLevel(text, level) {
-    const FILLER_WORDS = {
-      light: new Set(['the', 'a', 'an']),
-      medium: new Set([
-        'a', 'an', 'the', 'about', 'of', 'by', 'in', 'on', 'at', 'from', 'with', 'for',
-        'very', 'really', 'quite', 'rather', 'fairly', 'somewhat',
-        'just', 'only', 'simply', 'merely', 'please', 'kindly', 'thanks', 'thank',
-        'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly'
-      ]),
-      aggressive: new Set([
-        'a', 'an', 'the', 'about', 'of', 'by', 'in', 'on', 'at', 'from', 'with', 'for',
-        'or', 'and', 'but', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-        'have', 'has', 'had', 'do', 'does', 'did',
-        'very', 'really', 'quite', 'rather', 'fairly', 'somewhat', 'extremely',
-        'just', 'only', 'simply', 'merely', 'perhaps', 'maybe', 'could', 'might',
-        'please', 'kindly', 'thanks', 'thank', 'sorry',
-        'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly', 'obviously'
-      ]),
-      direct: new Set([
-        'a', 'an', 'the', 'about', 'of', 'by', 'in', 'on', 'at', 'from', 'with', 'for',
-        'or', 'and', 'but', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-        'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'can', 'could', 'should',
-        'very', 'really', 'quite', 'rather', 'fairly', 'somewhat', 'extremely',
-        'just', 'only', 'simply', 'merely', 'perhaps', 'maybe', 'certain', 'sure',
-        'please', 'kindly', 'thanks', 'thank', 'sorry', 'appreciate',
-        'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly', 'obviously',
-        'i', 'we', 'you', 'me', 'us', 'him', 'her', 'them', 'it', 'this', 'that', 'these', 'those'
-      ])
-    };
-
-    const FILLER_PHRASES = {
-      light: [],
-      medium: [
-        /\b(could you|would you|could you please)\b/gi,
-        /\b(I would like|I would appreciate)\b/gi,
-        /\b(in order to)\b/gi,
-        /\b(there is|there are|there was)\b/gi,
-        /\b(very much|quite a bit)\b/gi
-      ],
-      aggressive: [
-        /\b(could you|would you|can you|will you)\b/gi,
-        /\b(I would like|I want to|I need to|I think|I believe)\b/gi,
-        /\b(in order to|so as to)\b/gi,
-        /\b(there is|there are|there was|there were)\b/gi,
-        /\b(it is|it was)\b/gi,
-        /\b(very much|quite a bit|a lot)\b/gi,
-        /\b(kind of|sort of|kind|sort)\b/gi
-      ],
-      direct: [
-        /\bI\s+(would|want|need|think|believe|suppose|imagine|guess|hope)\b/gi,
-        /\b(could\s+you|would\s+you|can\s+you|will\s+you|may\s+I|might\s+I)\b/gi,
-        /\b(please|kindly)\s*,?\s+(help|assist|show|explain|tell)\b/gi,
-        /,?\s*(if\s+you\s+don't\s+mind|if\s+possible|if\s+you\s+have\s+time)\b/gi,
-        /\b(in\s+order\s+to|so\s+as\s+to|for\s+the\s+purpose\s+of)\b/gi,
-        /\b(there\s+is|there\s+are|there\s+was|there\s+were|there\s+exists)\b/gi,
-        /\b(it\s+is|it\s+was|it\s+has|it\s+being)\b/gi,
-        /\b(very\s+much|quite\s+a\s+bit|a\s+lot)\b/gi,
-        /\b(kind\s+of|sort\s+of|type\s+of|seems\s+like)\b/gi,
-        /\b(and\s+then|and\s+also|plus\s+also)\b/gi,
-        /\b(thanks?\s+(you|a\s+lot)|thank\s+you\s+very\s+much)\b/gi,
-        /\b(sorry\s+(if|for)|I\s+apologize)\b/gi
-      ]
-    };
-
-    let optimized = text;
-    const words = FILLER_WORDS[level] || FILLER_WORDS.medium;
-    const phrases = FILLER_PHRASES[level] || FILLER_PHRASES.medium;
-
-    phrases.forEach(pattern => {
-      optimized = optimized.replace(pattern, ' ');
-    });
-
-    const sentences = optimized.split(/([.!?]+)/);
-    
-    const optimizedSentences = sentences.map(sentence => {
-      if (/^[.!?]+$/.test(sentence)) return sentence;
-      if (!sentence.trim()) return '';
-      
-      const wordArray = sentence.split(/\s+/).filter(w => w);
-      if (wordArray.length === 0) return '';
-      
-      const filtered = wordArray.filter((word, index) => {
-        const lower = word.toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (/\d/.test(word)) return true;
-        if (/[A-Z]/.test(word) || word.length > 15) return true;
-        if (index === 0) return true;
-        return !words.has(lower);
-      });
-      
-      return filtered.join(' ');
-    });
-
-    optimized = optimizedSentences.join('');
-    optimized = optimized.replace(/\s+/g, ' ').trim();
-    optimized = optimized.replace(/\s+([.!?,;:])/g, '$1');
-    
-    return optimized;
   }
 })();

@@ -1,162 +1,4 @@
-// Better tokenizer with multiple algorithms
-
-// OpenAI-style token counter (improved)
-function estimateTokens(text) {
-  if (!text) return 0;
-  
-  // More accurate token estimation based on GPT tokenization patterns
-  // GPT uses subword tokenization - common patterns token count differently
-  
-  let tokenCount = 0;
-  
-  // Estimate based on character length (average 3.5 chars per token)
-  tokenCount += Math.ceil(text.length / 3.5);
-  
-  // Add bonuses for punctuation (each punctuation is ~0.5 token)
-  const punctuation = (text.match(/[.!?,;:\-()[\]{}]/g) || []).length;
-  tokenCount += Math.ceil(punctuation * 0.5);
-  
-  // Subtract for common contractions and abbreviations (saves 1 token per)
-  const contractions = (text.match(/['']s\b|n['']t\b|['']re\b|['']ve\b|['']ll\b|['']d\b/g) || []).length;
-  tokenCount -= contractions;
-  
-  return Math.max(1, tokenCount);
-}
-
-// Compression level definitions with enhanced phrase removal
-const COMPRESSION_LEVELS = {
-  light: {
-    fillerWords: new Set([
-      'the', 'a', 'an'
-    ]),
-    fillerPhrases: [],
-    description: 'Minimal - articles only'
-  },
-  medium: {
-    fillerWords: new Set([
-      'a', 'an', 'the',
-      'about', 'of', 'by', 'in', 'on', 'at', 'from', 'with', 'for',
-      'or', 'and', 'but',
-      'very', 'really', 'quite', 'rather', 'fairly', 'somewhat',
-      'just', 'only', 'simply', 'merely',
-      'please', 'kindly', 'thanks', 'thank',
-      'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly'
-    ]),
-    fillerPhrases: [
-      /\b(could you|would you|could you please|would you mind)\b/gi,
-      /\b(I would like|I would appreciate|I would love)\b/gi,
-      /\b(I hope|I wanted|I was wondering)\b/gi,
-      /\b(in order to|so as to)\b/gi,
-      /\b(there is|there are|there was|there were)\b/gi,
-      /\b(very much|quite a bit|a lot)\b/gi
-    ],
-    description: 'Balanced - removes filler & politeness'
-  },
-  aggressive: {
-    fillerWords: new Set([
-      'a', 'an', 'the',
-      'about', 'of', 'by', 'in', 'on', 'at', 'from', 'with', 'for',
-      'or', 'and', 'but', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-      'have', 'has', 'had', 'do', 'does', 'did',
-      'very', 'really', 'quite', 'rather', 'fairly', 'somewhat', 'extremely',
-      'just', 'only', 'simply', 'merely', 'perhaps', 'maybe', 'could', 'might',
-      'please', 'kindly', 'thanks', 'thank', 'sorry',
-      'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly', 'obviously', 'i', 'we', 'you', 'me'
-    ]),
-    fillerPhrases: [
-      /\b(could you|would you|can you|will you|would you please|could you please|can you please)\b/gi,
-      /\b(I would like|I would appreciate|I would love|I want to|I need to)\b/gi,
-      /\b(I think|I believe|I suppose|I imagine|I guess)\b/gi,
-      /\b(I hope|I was wondering|I wanted to ask)\b/gi,
-      /\b(in order to|so as to|for the purpose of)\b/gi,
-      /\b(there is|there are|there was|there were|there be)\b/gi,
-      /\b(it is|it was|it has been)\b/gi,
-      /\b(very much|quite a bit|a lot|so much)\b/gi,
-      /\b(kind of|sort of|type of|kind|sort)\b/gi,
-      /\b(I believe|I think|seems like|appears to be)\b/gi,
-      /\b(and then|and also|plus also)\b/gi,
-      /\b(as well|too much|too many)\b/gi
-    ],
-    description: 'Maximum - removes helpers & weak language'
-  },
-  direct: {
-    fillerWords: new Set([
-      'a', 'an', 'the',
-      'about', 'of', 'by', 'in', 'on', 'at', 'from', 'with', 'for',
-      'or', 'and', 'but', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'can', 'could', 'should', 'may', 'might',
-      'very', 'really', 'quite', 'rather', 'fairly', 'somewhat', 'extremely', 'so', 'very', 'just',
-      'just', 'only', 'simply', 'merely', 'perhaps', 'maybe', 'certain', 'sure',
-      'please', 'kindly', 'thanks', 'thank', 'sorry', 'appreciate',
-      'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly', 'obviously', 'apparently',
-      'i', 'we', 'you', 'me', 'us', 'him', 'her', 'them', 'it', 'this', 'that', 'these', 'those',
-      'well', 'now', 'then', 'also', 'still', 'however'
-    ]),
-    fillerPhrases: [
-      /\bI\s+(would|want|need|think|believe|suppose|imagine|guess|hope|was\s+wondering)\b/gi,
-      /\b(could\s+you|would\s+you|can\s+you|will\s+you|may\s+I|might\s+I)\b/gi,
-      /\b(please|kindly|humbly)\s*,?\s+(help|assist|show|explain|tell|provide|give)\b/gi,
-      /,?\s*(if\s+you\s+don't\s+mind|if\s+possible|if\s+you\s+have\s+time)\b/gi,
-      /\b(in\s+order\s+to|so\s+as\s+to|for\s+the\s+purpose\s+of|to\s+be\s+able\s+to)\b/gi,
-      /\b(there\s+is|there\s+are|there\s+was|there\s+were|there\s+exists)\b/gi,
-      /\b(it\s+is|it\s+was|it\s+has|it\s+being)\b/gi,
-      /\b(very\s+much|quite\s+a\s+bit|a\s+lot|so\s+much|so\s+many)\b/gi,
-      /\b(kind\s+of|sort\s+of|type\s+of|seems\s+like|appears\s+to\s+be|looks\s+like)\b/gi,
-      /\b(I\s+(believe|think|suppose|imagine|guess)|seems\s+like|appears\s+that|looks\s+like)\b/gi,
-      /\b(and\s+then|and\s+also|plus\s+also|in\s+addition|additionally)\b/gi,
-      /,?\s*(as\s+well|too|as\s+well\s+as|in\s+addition)\b/gi,
-      /\b(would\s+be\s+able|could\s+you\s+possibly|might\s+you\s+be\s+able)\b/gi,
-      /\b(thanks?\s+(you|a\s+lot|so\s+much)|thank\s+you\s+(very\s+much|in\s+advance))\b/gi,
-      /\b(sorry\s+(if|for)|I\s+apologize|pardon\s+me)\b/gi
-    ],
-    description: 'Ultra-Direct - get to the point immediately!'
-  }
-};
-
-function optimizeText(text, level = 'medium') {
-  if (!text) return text;
-  
-  const config = COMPRESSION_LEVELS[level] || COMPRESSION_LEVELS.medium;
-  let optimized = text;
-  
-  // Remove filler phrases first
-  config.fillerPhrases.forEach(pattern => {
-    optimized = optimized.replace(pattern, ' ');
-  });
-  
-  // Split into sentences while preserving punctuation
-  const sentences = optimized.split(/([.!?]+)/);
-  
-  const optimizedSentences = sentences.map(sentence => {
-    // Keep punctuation as-is
-    if (/^[.!?]+$/.test(sentence)) return sentence;
-    if (!sentence.trim()) return '';
-    
-    const words = sentence.split(/\s+/).filter(w => w);
-    if (words.length === 0) return '';
-    
-    const filtered = words.filter((word, index) => {
-      const lower = word.toLowerCase().replace(/[^a-z0-9]/g, '');
-      
-      // Always keep: numbers, technical terms, first word
-      if (/\d/.test(word)) return true;
-      if (/[A-Z]/.test(word) || word.length > 15) return true;
-      if (index === 0) return true;
-      
-      // Remove if in filler set
-      return !config.fillerWords.has(lower);
-    });
-    
-    return filtered.join(' ');
-  });
-  
-  // Rejoin and cleanup
-  optimized = optimizedSentences.join('');
-  optimized = optimized.replace(/\s+/g, ' ').trim();
-  optimized = optimized.replace(/\s+([.!?,;:])/g, '$1');
-  
-  return optimized;
-}
+const { estimateTokens, optimizeText } = TokenOptimizer;
 
 // DOM elements
 const input = document.getElementById('input');
@@ -169,6 +11,15 @@ const copyBtn = document.getElementById('copyBtn');
 const resetBtn = document.getElementById('resetBtn');
 const outputSection = document.getElementById('outputSection');
 const toast = document.getElementById('toast');
+const promptNameInput = document.getElementById('promptNameInput');
+const savePromptBtn = document.getElementById('savePromptBtn');
+const savedPromptsSelect = document.getElementById('savedPromptsSelect');
+const loadPromptBtn = document.getElementById('loadPromptBtn');
+const deletePromptBtn = document.getElementById('deletePromptBtn');
+const historySelect = document.getElementById('historySelect');
+const useHistoryBtn = document.getElementById('useHistoryBtn');
+const copyHistoryBtn = document.getElementById('copyHistoryBtn');
+const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
 // Compression level radio buttons
 const compressionRadios = document.querySelectorAll('input[name="compression"]');
@@ -176,6 +27,11 @@ let currentCompressionLevel = 'medium';
 
 let originalTokens = 0;
 let optimizedTokens = 0;
+let promptLibrary = [];
+const PROMPT_LIBRARY_KEY = 'promptLibrary';
+let clipboardHistory = [];
+const CLIPBOARD_HISTORY_KEY = 'clipboardHistory';
+const CLIPBOARD_HISTORY_LIMIT = 20;
 
 // Load compression level preference
 chrome.storage.local.get(['compressionLevel'], (result) => {
@@ -230,11 +86,187 @@ function optimizePrompt() {
   
   outputSection.classList.add('visible');
   copyBtn.disabled = false;
+  pushClipboardHistory(text, 'prompt');
+  pushClipboardHistory(optimized, 'optimized');
   
   updateStats();
 }
 
 optimizeBtn.addEventListener('click', optimizePrompt);
+
+function renderPromptLibrary() {
+  const previousSelection = savedPromptsSelect.value;
+  savedPromptsSelect.innerHTML = '<option value="">Select saved prompt...</option>';
+
+  promptLibrary.forEach((prompt) => {
+    const option = document.createElement('option');
+    option.value = prompt.id;
+    option.textContent = prompt.name;
+    savedPromptsSelect.appendChild(option);
+  });
+
+  if (previousSelection) {
+    savedPromptsSelect.value = previousSelection;
+  }
+}
+
+function loadPromptLibrary() {
+  chrome.storage.local.get([PROMPT_LIBRARY_KEY], (result) => {
+    const storedPrompts = result[PROMPT_LIBRARY_KEY];
+    promptLibrary = Array.isArray(storedPrompts) ? storedPrompts : [];
+    renderPromptLibrary();
+  });
+}
+
+function savePromptLibrary() {
+  chrome.storage.local.set({ [PROMPT_LIBRARY_KEY]: promptLibrary });
+}
+
+function renderClipboardHistory() {
+  const previousSelection = historySelect.value;
+  historySelect.innerHTML = '';
+
+  if (!clipboardHistory.length) {
+    historySelect.innerHTML = '<option value="">No recent items</option>';
+    return;
+  }
+
+  clipboardHistory.forEach((item) => {
+    const option = document.createElement('option');
+    option.value = item.id;
+    option.textContent = `[${item.kind}] ${item.preview}`;
+    historySelect.appendChild(option);
+  });
+
+  if (previousSelection) {
+    historySelect.value = previousSelection;
+  }
+}
+
+function saveClipboardHistory() {
+  chrome.storage.local.set({ [CLIPBOARD_HISTORY_KEY]: clipboardHistory });
+}
+
+function loadClipboardHistory() {
+  chrome.storage.local.get([CLIPBOARD_HISTORY_KEY], (result) => {
+    const stored = result[CLIPBOARD_HISTORY_KEY];
+    clipboardHistory = Array.isArray(stored) ? stored : [];
+    renderClipboardHistory();
+  });
+}
+
+function pushClipboardHistory(text, kind) {
+  const normalized = (text || '').trim();
+  if (!normalized) return;
+
+  const duplicateIndex = clipboardHistory.findIndex((item) => item.text === normalized && item.kind === kind);
+  if (duplicateIndex >= 0) {
+    clipboardHistory.splice(duplicateIndex, 1);
+  }
+
+  const preview = normalized.length > 80 ? `${normalized.slice(0, 80)}...` : normalized;
+  clipboardHistory.unshift({
+    id: `hist_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    kind,
+    text: normalized,
+    preview,
+    createdAt: new Date().toISOString()
+  });
+
+  if (clipboardHistory.length > CLIPBOARD_HISTORY_LIMIT) {
+    clipboardHistory = clipboardHistory.slice(0, CLIPBOARD_HISTORY_LIMIT);
+  }
+
+  saveClipboardHistory();
+  renderClipboardHistory();
+}
+
+function makePromptId() {
+  return `prompt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+savePromptBtn.addEventListener('click', () => {
+  const text = input.value.trim();
+  const name = promptNameInput.value.trim();
+
+  if (!text) {
+    showToast('Enter prompt text first', true);
+    return;
+  }
+  if (!name) {
+    showToast('Enter a prompt name', true);
+    return;
+  }
+
+  const existingIndex = promptLibrary.findIndex((p) => p.name.toLowerCase() === name.toLowerCase());
+  const now = new Date().toISOString();
+
+  if (existingIndex >= 0) {
+    promptLibrary[existingIndex] = {
+      ...promptLibrary[existingIndex],
+      name,
+      text,
+      updatedAt: now
+    };
+    showToast('Prompt updated');
+  } else {
+    promptLibrary.unshift({
+      id: makePromptId(),
+      name,
+      text,
+      createdAt: now,
+      updatedAt: now
+    });
+    showToast('Prompt saved');
+  }
+
+  savePromptLibrary();
+  renderPromptLibrary();
+  const savedItem = promptLibrary.find((p) => p.name.toLowerCase() === name.toLowerCase());
+  if (savedItem) savedPromptsSelect.value = savedItem.id;
+});
+
+loadPromptBtn.addEventListener('click', () => {
+  const selectedId = savedPromptsSelect.value;
+  if (!selectedId) {
+    showToast('Select a saved prompt', true);
+    return;
+  }
+
+  const selectedPrompt = promptLibrary.find((p) => p.id === selectedId);
+  if (!selectedPrompt) {
+    showToast('Prompt not found', true);
+    return;
+  }
+
+  input.value = selectedPrompt.text;
+  promptNameInput.value = selectedPrompt.name;
+  output.value = '';
+  outputSection.classList.remove('visible');
+  copyBtn.disabled = true;
+  optimizedTokens = 0;
+  updateStats();
+  showToast('Prompt loaded');
+});
+
+deletePromptBtn.addEventListener('click', () => {
+  const selectedId = savedPromptsSelect.value;
+  if (!selectedId) {
+    showToast('Select a saved prompt', true);
+    return;
+  }
+
+  const initialLength = promptLibrary.length;
+  promptLibrary = promptLibrary.filter((p) => p.id !== selectedId);
+  if (promptLibrary.length === initialLength) {
+    showToast('Prompt not found', true);
+    return;
+  }
+
+  savePromptLibrary();
+  renderPromptLibrary();
+  showToast('Prompt deleted');
+});
 
 // Copy button with better error handling
 copyBtn.addEventListener('click', async () => {
@@ -246,11 +278,64 @@ copyBtn.addEventListener('click', async () => {
   
   try {
     await navigator.clipboard.writeText(text);
+    pushClipboardHistory(text, 'optimized');
     showToast('Copied!');
   } catch (err) {
     console.error('Copy failed:', err);
     showToast('Copy failed - try again', true);
   }
+});
+
+useHistoryBtn.addEventListener('click', () => {
+  const selectedId = historySelect.value;
+  if (!selectedId) {
+    showToast('Select a history item', true);
+    return;
+  }
+
+  const selected = clipboardHistory.find((item) => item.id === selectedId);
+  if (!selected) {
+    showToast('History item not found', true);
+    return;
+  }
+
+  input.value = selected.text;
+  output.value = '';
+  outputSection.classList.remove('visible');
+  copyBtn.disabled = true;
+  optimizedTokens = 0;
+  updateStats();
+  showToast('History item loaded');
+});
+
+copyHistoryBtn.addEventListener('click', async () => {
+  const selectedId = historySelect.value;
+  if (!selectedId) {
+    showToast('Select a history item', true);
+    return;
+  }
+
+  const selected = clipboardHistory.find((item) => item.id === selectedId);
+  if (!selected) {
+    showToast('History item not found', true);
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(selected.text);
+    pushClipboardHistory(selected.text, selected.kind);
+    showToast('Copied from history');
+  } catch (err) {
+    console.error('History copy failed:', err);
+    showToast('Copy failed - try again', true);
+  }
+});
+
+clearHistoryBtn.addEventListener('click', () => {
+  clipboardHistory = [];
+  saveClipboardHistory();
+  renderClipboardHistory();
+  showToast('History cleared');
 });
 
 // Reset button
@@ -306,4 +391,6 @@ chrome.storage.local.get(['lastInput', 'pendingText'], (result) => {
 });
 
 // Initialize
+loadPromptLibrary();
+loadClipboardHistory();
 updateStats();

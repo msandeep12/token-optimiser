@@ -1,4 +1,5 @@
 // Background Service Worker for Chrome Extension
+importScripts('optimizer-core.js');
 
 // Create context menu items
 chrome.contextMenus.create({
@@ -57,7 +58,7 @@ function openOptimizer(text, tabId) {
 
 // Show token count
 function showTokenCount(text) {
-  const tokens = estimateTokens(text);
+  const tokens = TokenOptimizer.estimateTokens(text);
   chrome.notifications.create({
     type: 'basic',
     iconUrl: 'icons/icon128.svg',
@@ -69,10 +70,10 @@ function showTokenCount(text) {
 
 // Optimize text and copy
 function optimizeAndCopy(text, tabId) {
-  const optimized = optimizeTextDefault(text);
+  const optimized = TokenOptimizer.optimizeText(text, 'medium');
   chrome.storage.local.set({
     lastOptimized: optimized,
-    lastTokens: estimateTokens(optimized)
+    lastTokens: TokenOptimizer.estimateTokens(optimized)
   });
   
   // Copy to clipboard
@@ -86,63 +87,6 @@ function optimizeAndCopy(text, tabId) {
       });
     });
   }
-}
-
-// Token estimator (mirrors popup.js)
-function estimateTokens(text) {
-  if (!text) return 0;
-  const chars = text.length;
-  return Math.ceil(chars / 3.5);
-}
-
-// Default optimization (balanced)
-function optimizeTextDefault(text) {
-  const FILLER_WORDS = new Set([
-    'a', 'an', 'the', 'about', 'of', 'by', 'in', 'on', 'at', 'from', 'with', 'for',
-    'or', 'and', 'but', 'very', 'really', 'quite', 'rather', 'fairly', 'somewhat',
-    'just', 'only', 'simply', 'merely', 'please', 'kindly', 'thanks', 'thank',
-    'basically', 'actually', 'literally', 'honestly', 'frankly', 'clearly'
-  ]);
-
-  const FILLER_PHRASES = [
-    /\b(could you|would you|could you please)\b/gi,
-    /\b(I would like|I would appreciate)\b/gi,
-    /\b(in order to)\b/gi,
-    /\b(there is|there are|there was)\b/gi,
-    /\b(very much|quite a bit)\b/gi
-  ];
-
-  let optimized = text;
-  
-  FILLER_PHRASES.forEach(pattern => {
-    optimized = optimized.replace(pattern, ' ');
-  });
-
-  const sentences = optimized.split(/([.!?]+)/);
-  
-  const optimizedSentences = sentences.map(sentence => {
-    if (/^[.!?]+$/.test(sentence)) return sentence;
-    if (!sentence.trim()) return '';
-    
-    const words = sentence.split(/\s+/).filter(w => w);
-    if (words.length === 0) return '';
-    
-    const filtered = words.filter((word, index) => {
-      const lower = word.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (/\d/.test(word)) return true;
-      if (/[A-Z]/.test(word) || word.length > 15) return true;
-      if (index === 0) return true;
-      return !FILLER_WORDS.has(lower);
-    });
-    
-    return filtered.join(' ');
-  });
-
-  optimized = optimizedSentences.join('');
-  optimized = optimized.replace(/\s+/g, ' ').trim();
-  optimized = optimized.replace(/\s+([.!?,;:])/g, '$1');
-  
-  return optimized;
 }
 
 // Listen for tab updates to inject content script on AI sites

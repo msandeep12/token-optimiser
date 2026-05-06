@@ -211,6 +211,77 @@
       border-color: #2563eb;
       color: #fff;
     }
+
+    .library {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #252525;
+      border-radius: 6px;
+    }
+
+    .library-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .library-input,
+    .library-select {
+      width: 100%;
+      padding: 10px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-size: 13px;
+    }
+
+    .library-input:focus,
+    .library-select:focus {
+      outline: none;
+      border-color: #666;
+    }
+
+    .library-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .small-btn {
+      padding: 10px;
+      font-size: 13px;
+    }
+
+    .history {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #252525;
+      border-radius: 6px;
+    }
+
+    .history-select {
+      width: 100%;
+      padding: 10px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .history-select:focus {
+      outline: none;
+      border-color: #666;
+    }
+
+    .history-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
   </style>
 </head>
 <body>
@@ -255,14 +326,44 @@
     <button id="copyBtn" disabled title="Copy optimized text">Copy</button>
     <button id="resetBtn" class="secondary" title="Clear all text">Reset</button>
   </div>
-  
+
   <div id="outputSection" class="output-section">
     <div class="section-title">Optimized Result</div>
     <textarea id="output" readonly aria-label="Optimized prompt result"></textarea>
   </div>
+
+  <div class="library">
+    <span class="level-label">Prompt Library</span>
+    <div class="library-row">
+      <input id="promptNameInput" class="library-input" type="text" maxlength="80" placeholder="Prompt name (e.g., Standup Summary)" aria-label="Prompt name">
+      <button id="savePromptBtn" class="primary small-btn" title="Save current input">Save</button>
+    </div>
+    <div class="library-row">
+      <select id="savedPromptsSelect" class="library-select" aria-label="Saved prompts">
+        <option value="">Select saved prompt...</option>
+      </select>
+    </div>
+    <div class="library-actions">
+      <button id="loadPromptBtn" class="small-btn" title="Load selected prompt">Load</button>
+      <button id="deletePromptBtn" class="secondary small-btn" title="Delete selected prompt">Delete</button>
+    </div>
+  </div>
+
+  <div class="history">
+    <span class="level-label">Clipboard History</span>
+    <select id="historySelect" class="history-select" aria-label="Clipboard history">
+      <option value="">No recent items</option>
+    </select>
+    <div class="history-actions">
+      <button id="useHistoryBtn" class="small-btn" title="Use selected history in input">Use</button>
+      <button id="copyHistoryBtn" class="small-btn" title="Copy selected history item">Copy</button>
+      <button id="clearHistoryBtn" class="secondary small-btn" title="Clear clipboard history">Clear</button>
+    </div>
+  </div>
   
   <div id="toast" class="toast">Copied!</div>
   
+  <script src="optimizer-core.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
