@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "AI Token Optimizer",
+  "version": "1.1.0",
+  "description": "Compress prompts intelligently to save AI tokens. Works with Claude, ChatGPT, Copilot & more.",
+  "author": "Token Optimizer",
+  "homepage_url": "https://github.com/yourusername/token-optimizer-extension",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AI Token Optimizer",
+    "default_icon": {
+      "16": "icons/icon16.svg",
+      "48": "icons/icon48.svg",
+      "128": "icons/icon128.svg"
+    }
+  },
+  "permissions": [
+    "storage",
+    "clipboardWrite"
+  ],
+  "icons": {
+    "16": "icons/icon16.svg",
+    "48": "icons/icon48.svg",
+    "128": "icons/icon128.svg"
+  }
+}

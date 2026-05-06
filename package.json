@@ -1,0 +1,25 @@
+{
+  "name": "token-optimizer-extension",
+  "version": "1.1.0",
+  "description": "Chrome extension to compress prompts and save AI tokens",
+  "author": "Token Optimizer",
+  "license": "MIT",
+  "scripts": {
+    "dev": "echo 'Open chrome://extensions, enable Developer mode, and Load unpacked'",
+    "test": "echo 'No tests configured yet'",
+    "build": "echo 'Extension is ready to use - no build step needed'"
+  },
+  "keywords": [
+    "chrome-extension",
+    "ai",
+    "tokens",
+    "optimization",
+    "chatgpt",
+    "claude",
+    "prompt"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/token-optimizer-extension"
+  }
+}
