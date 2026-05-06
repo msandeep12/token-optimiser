@@ -168,12 +168,69 @@
     button.secondary:hover {
       background: #666;
     }
+    
+    .compression-levels {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #252525;
+      border-radius: 6px;
+    }
+    
+    .level-label {
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: block;
+    }
+    
+    .level-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+    }
+    
+    .level-radio {
+      display: none;
+    }
+    
+    .level-label-radio {
+      padding: 8px 4px;
+      text-align: center;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    
+    .level-radio:checked + .level-label-radio {
+      background: #3b82f6;
+      border-color: #2563eb;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
   <h1>⚡ Token Optimizer</h1>
   
   <textarea id="input" placeholder="Paste prompt here..." aria-label="Input prompt text"></textarea>
+  
+  <div class="compression-levels">
+    <span class="level-label">Compression Level</span>
+    <div class="level-options">
+      <input type="radio" id="light" name="compression" value="light" class="level-radio">
+      <label for="light" class="level-label-radio">Light</label>
+      
+      <input type="radio" id="medium" name="compression" value="medium" class="level-radio" checked>
+      <label for="medium" class="level-label-radio">Medium</label>
+      
+      <input type="radio" id="aggressive" name="compression" value="aggressive" class="level-radio">
+      <label for="aggressive" class="level-label-radio">Aggressive</label>
+    </div>
+  </div>
   
   <div class="stats">
     <div class="stat-item">
