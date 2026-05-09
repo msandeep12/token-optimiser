@@ -122,6 +122,17 @@
     'be', 'been', 'being', 'do', 'does', 'did', 'have', 'has', 'had',
     'will', 'would', 'can', 'could', 'should', 'may', 'might'
   ]);
+  const HEDGE_WORDS = new Set([
+    'maybe', 'perhaps', 'probably', 'possibly', 'somewhat', 'quite', 'really',
+    'very', 'just', 'simply', 'basically', 'actually', 'honestly', 'frankly',
+    'clearly', 'literally', 'sort', 'kind'
+  ]);
+  const POLITENESS_WORDS = new Set([
+    'please', 'kindly', 'thanks', 'thank', 'sorry', 'appreciate'
+  ]);
+  const CONNECTOR_WORDS = new Set([
+    'and', 'or', 'but', 'because', 'while', 'although', 'however', 'therefore'
+  ]);
 
   function estimateTokens(text) {
     if (!text) return 0;
@@ -161,6 +172,24 @@
 
   function hasLikelyVerb(value) {
     return /\b(is|are|was|were|be|being|been|have|has|had|do|does|did|need|want|make|build|plan|create|write|explain|find|show|help|optimize|track|save|reuse|book|travel|visit)\b/i.test(value || '');
+  }
+
+  function lexicalWeight(rawWord, index) {
+    const key = normalizeWord(rawWord);
+    if (!key) return 0;
+    if (index === 0) return 1;
+    if (NEGATION_WORDS.has(key)) return 1;
+    if (QUESTION_OPENERS.has(key)) return 0.95;
+    if (/\d/.test(rawWord)) return 0.95;
+    if (isTechnicalToken(rawWord)) return 0.95;
+    if (isLikelyProper(rawWord, index)) return 0.95;
+    if (DURATION_UNITS.has(key)) return 0.95;
+    if (LOCATION_PREPOSITIONS.has(key)) return 0.92;
+    if (POLITENESS_WORDS.has(key)) return 0.1;
+    if (HEDGE_WORDS.has(key)) return 0.18;
+    if (COMMON_FUNCTION_WORDS.has(key)) return 0.28;
+    if (CONNECTOR_WORDS.has(key)) return 0.35;
+    return 0.72;
   }
 
   function applyPhraseRewrites(text) {
@@ -241,6 +270,13 @@
   function buildCandidateWords(words, levelName, protectedTerms) {
     const config = COMPRESSION_LEVELS[levelName];
     const kept = [];
+    const dropThresholdByLevel = {
+      light: 0.16,
+      medium: 0.3,
+      aggressive: 0.42,
+      direct: 0.5
+    };
+    const dropThreshold = dropThresholdByLevel[levelName] || 0.3;
 
     words.forEach((rawWord, index) => {
       const key = normalizeWord(rawWord);
@@ -254,6 +290,7 @@
       if (isLikelyProper(rawWord, index)) keep = true;
       if (key.length > 15) keep = true;
       if (!keep && !config.fillerWords.has(key)) keep = true;
+      if (!keep && lexicalWeight(rawWord, index) >= dropThreshold) keep = true;
 
       if (keep) kept.push(rawWord);
     });
@@ -306,12 +343,18 @@
     }
 
     const compression = 1 - (candidateCount / originalCount);
+    const originalWeight = originalWords.reduce((sum, word, i) => sum + lexicalWeight(word, i), 0) || 1;
+    const candidateWeight = candidateWords.reduce((sum, word, i) => sum + lexicalWeight(word, i), 0);
+    const weightedRetention = candidateWeight / originalWeight;
+    if (weightedRetention < (config.minRetention - 0.08)) {
+      return { score: Number.NEGATIVE_INFINITY, text: '' };
+    }
     const compressionScore = clamp01(1 - (Math.abs(compression - config.targetCompression) / 0.7));
     const verbScore = candidateHasVerb ? 1 : 0.65;
     const requestedLevelBonus = levelName === requestedLevel ? 0.03 : 0;
     const brevityPenalty = candidateCount > originalCount ? 0.9 : 1;
 
-    let score = (retention * 0.55) + (compressionScore * 0.25) + (verbScore * 0.2) + requestedLevelBonus;
+    let score = (retention * 0.38) + (weightedRetention * 0.24) + (compressionScore * 0.2) + (verbScore * 0.18) + requestedLevelBonus;
     score *= brevityPenalty;
 
     const isNonLightMode = requestedLevel !== 'light';

@@ -11,15 +11,15 @@ const copyBtn = document.getElementById('copyBtn');
 const resetBtn = document.getElementById('resetBtn');
 const outputSection = document.getElementById('outputSection');
 const toast = document.getElementById('toast');
-const promptNameInput = document.getElementById('promptNameInput');
-const savePromptBtn = document.getElementById('savePromptBtn');
-const savedPromptsSelect = document.getElementById('savedPromptsSelect');
-const loadPromptBtn = document.getElementById('loadPromptBtn');
-const deletePromptBtn = document.getElementById('deletePromptBtn');
 const historySelect = document.getElementById('historySelect');
 const useHistoryBtn = document.getElementById('useHistoryBtn');
 const copyHistoryBtn = document.getElementById('copyHistoryBtn');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+const bestQualityModel = document.getElementById('bestQualityModel');
+const bestQualityReason = document.getElementById('bestQualityReason');
+const bestValueModel = document.getElementById('bestValueModel');
+const bestValueReason = document.getElementById('bestValueReason');
+const modelSuggestNote = document.getElementById('modelSuggestNote');
 
 // Compression level radio buttons
 const compressionRadios = document.querySelectorAll('input[name="compression"]');
@@ -27,11 +27,36 @@ let currentCompressionLevel = 'medium';
 
 let originalTokens = 0;
 let optimizedTokens = 0;
-let promptLibrary = [];
-const PROMPT_LIBRARY_KEY = 'promptLibrary';
 let clipboardHistory = [];
 const CLIPBOARD_HISTORY_KEY = 'clipboardHistory';
 const CLIPBOARD_HISTORY_LIMIT = 20;
+
+const MODEL_POLICY = {
+  coding: {
+    quality: { name: 'Claude Sonnet / GPT-4.1+', reason: 'Strong code reasoning and reliable structured outputs.' },
+    value: { name: 'GPT-4.1 mini / Gemini Flash', reason: 'Good code help with lower latency and cost.' }
+  },
+  analysis: {
+    quality: { name: 'GPT-5 / Claude Opus', reason: 'Best for multi-step reasoning and nuanced synthesis.' },
+    value: { name: 'Claude Sonnet / GPT-4.1', reason: 'Balanced depth, speed, and token efficiency.' }
+  },
+  creative: {
+    quality: { name: 'GPT-5 / Claude Opus', reason: 'Better style control and richer long-form output.' },
+    value: { name: 'Claude Sonnet / GPT-4.1 mini', reason: 'Good creativity with better cost profile.' }
+  },
+  summarization: {
+    quality: { name: 'GPT-4.1 / Claude Sonnet', reason: 'Strong compression while preserving key details.' },
+    value: { name: 'Gemini Flash / GPT-4.1 mini', reason: 'Fast concise summaries at lower token cost.' }
+  },
+  extraction: {
+    quality: { name: 'GPT-4.1 / Claude Sonnet', reason: 'Consistent structured extraction and formatting.' },
+    value: { name: 'GPT-4.1 mini / Gemini Flash', reason: 'Efficient for repeatable parsing tasks.' }
+  },
+  chat: {
+    quality: { name: 'Claude Sonnet / GPT-4.1', reason: 'Reliable all-round responses for mixed prompts.' },
+    value: { name: 'GPT-4.1 mini / Gemini Flash', reason: 'Solid general answers with lower usage.' }
+  }
+};
 
 // Load compression level preference
 chrome.storage.local.get(['compressionLevel'], (result) => {
@@ -72,6 +97,67 @@ function updateStats() {
   }
   
   optimizeBtn.disabled = !text.trim();
+  updateModelSuggestion(text);
+}
+
+function detectPromptType(text) {
+  const lower = text.toLowerCase();
+  const codeSignals = /\b(code|debug|bug|stack trace|refactor|function|class|api|sql|javascript|typescript|python|java|c\+\+)\b/;
+  const summarySignals = /\b(summarize|summary|tl;dr|condense|shorten|brief)\b/;
+  const extractionSignals = /\b(extract|list|json|table|fields|entities|parse|schema)\b/;
+  const creativeSignals = /\b(story|poem|creative|rewrite|tone|style|script|lyrics)\b/;
+  const analysisSignals = /\b(compare|evaluate|tradeoff|strategy|plan|analyze|analysis|reason)\b/;
+
+  if (codeSignals.test(lower)) return 'coding';
+  if (extractionSignals.test(lower)) return 'extraction';
+  if (summarySignals.test(lower)) return 'summarization';
+  if (creativeSignals.test(lower)) return 'creative';
+  if (analysisSignals.test(lower)) return 'analysis';
+  return 'chat';
+}
+
+function estimateComplexity(text) {
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const multiPart = (text.match(/\b(and|also|plus|then|while|after)\b/gi) || []).length;
+  const punctuationHeavy = (text.match(/[;:(){}\[\]]/g) || []).length;
+  const score = words + (multiPart * 4) + (punctuationHeavy * 3);
+  if (score >= 90) return 'high';
+  if (score >= 35) return 'medium';
+  return 'low';
+}
+
+function updateModelSuggestion(text) {
+  const trimmed = (text || '').trim();
+  if (!trimmed) {
+    bestQualityModel.textContent = '-';
+    bestValueModel.textContent = '-';
+    bestQualityReason.textContent = 'Add a prompt to get a recommendation.';
+    bestValueReason.textContent = 'Add a prompt to get a recommendation.';
+    modelSuggestNote.textContent = 'Heuristic recommendation using prompt type and length.';
+    return;
+  }
+
+  const promptType = detectPromptType(trimmed);
+  const complexity = estimateComplexity(trimmed);
+  const policy = MODEL_POLICY[promptType] || MODEL_POLICY.chat;
+  const estTokens = estimateTokens(trimmed);
+  let quality = policy.quality;
+  let value = policy.value;
+
+  // Make recommendations adapt to size/complexity, not only task type.
+  if (complexity === 'high' || estTokens > 1200) {
+    quality = { name: 'GPT-5 / Claude Opus', reason: 'Large or complex prompt benefits from deeper reasoning and long-context quality.' };
+    value = { name: 'Claude Sonnet / GPT-4.1', reason: 'Good balance for heavy prompts with better token efficiency than frontier models.' };
+  } else if (complexity === 'medium' || estTokens > 350) {
+    quality = { name: 'Claude Sonnet / GPT-4.1', reason: 'Strong quality for multi-part prompts without max-cost model overhead.' };
+    value = { name: 'GPT-4.1 mini / Gemini Flash', reason: 'Cost-efficient for moderate prompts while keeping good output quality.' };
+  }
+
+  bestQualityModel.textContent = quality.name;
+  bestValueModel.textContent = value.name;
+  bestQualityReason.textContent = quality.reason;
+  bestValueReason.textContent = value.reason;
+  modelSuggestNote.textContent = `Type: ${promptType} | Complexity: ${complexity} | Estimated prompt tokens: ${estTokens}`;
 }
 
 // Optimize button
@@ -88,39 +174,12 @@ function optimizePrompt() {
   copyBtn.disabled = false;
   pushClipboardHistory(text, 'prompt');
   pushClipboardHistory(optimized, 'optimized');
+  updateModelSuggestion(text);
   
   updateStats();
 }
 
 optimizeBtn.addEventListener('click', optimizePrompt);
-
-function renderPromptLibrary() {
-  const previousSelection = savedPromptsSelect.value;
-  savedPromptsSelect.innerHTML = '<option value="">Select saved prompt...</option>';
-
-  promptLibrary.forEach((prompt) => {
-    const option = document.createElement('option');
-    option.value = prompt.id;
-    option.textContent = prompt.name;
-    savedPromptsSelect.appendChild(option);
-  });
-
-  if (previousSelection) {
-    savedPromptsSelect.value = previousSelection;
-  }
-}
-
-function loadPromptLibrary() {
-  chrome.storage.local.get([PROMPT_LIBRARY_KEY], (result) => {
-    const storedPrompts = result[PROMPT_LIBRARY_KEY];
-    promptLibrary = Array.isArray(storedPrompts) ? storedPrompts : [];
-    renderPromptLibrary();
-  });
-}
-
-function savePromptLibrary() {
-  chrome.storage.local.set({ [PROMPT_LIBRARY_KEY]: promptLibrary });
-}
 
 function renderClipboardHistory() {
   const previousSelection = historySelect.value;
@@ -181,93 +240,6 @@ function pushClipboardHistory(text, kind) {
   renderClipboardHistory();
 }
 
-function makePromptId() {
-  return `prompt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-savePromptBtn.addEventListener('click', () => {
-  const text = input.value.trim();
-  const name = promptNameInput.value.trim();
-
-  if (!text) {
-    showToast('Enter prompt text first', true);
-    return;
-  }
-  if (!name) {
-    showToast('Enter a prompt name', true);
-    return;
-  }
-
-  const existingIndex = promptLibrary.findIndex((p) => p.name.toLowerCase() === name.toLowerCase());
-  const now = new Date().toISOString();
-
-  if (existingIndex >= 0) {
-    promptLibrary[existingIndex] = {
-      ...promptLibrary[existingIndex],
-      name,
-      text,
-      updatedAt: now
-    };
-    showToast('Prompt updated');
-  } else {
-    promptLibrary.unshift({
-      id: makePromptId(),
-      name,
-      text,
-      createdAt: now,
-      updatedAt: now
-    });
-    showToast('Prompt saved');
-  }
-
-  savePromptLibrary();
-  renderPromptLibrary();
-  const savedItem = promptLibrary.find((p) => p.name.toLowerCase() === name.toLowerCase());
-  if (savedItem) savedPromptsSelect.value = savedItem.id;
-});
-
-loadPromptBtn.addEventListener('click', () => {
-  const selectedId = savedPromptsSelect.value;
-  if (!selectedId) {
-    showToast('Select a saved prompt', true);
-    return;
-  }
-
-  const selectedPrompt = promptLibrary.find((p) => p.id === selectedId);
-  if (!selectedPrompt) {
-    showToast('Prompt not found', true);
-    return;
-  }
-
-  input.value = selectedPrompt.text;
-  promptNameInput.value = selectedPrompt.name;
-  output.value = '';
-  outputSection.classList.remove('visible');
-  copyBtn.disabled = true;
-  optimizedTokens = 0;
-  updateStats();
-  showToast('Prompt loaded');
-});
-
-deletePromptBtn.addEventListener('click', () => {
-  const selectedId = savedPromptsSelect.value;
-  if (!selectedId) {
-    showToast('Select a saved prompt', true);
-    return;
-  }
-
-  const initialLength = promptLibrary.length;
-  promptLibrary = promptLibrary.filter((p) => p.id !== selectedId);
-  if (promptLibrary.length === initialLength) {
-    showToast('Prompt not found', true);
-    return;
-  }
-
-  savePromptLibrary();
-  renderPromptLibrary();
-  showToast('Prompt deleted');
-});
-
 // Copy button with better error handling
 copyBtn.addEventListener('click', async () => {
   const text = output.value;
@@ -305,6 +277,7 @@ useHistoryBtn.addEventListener('click', () => {
   copyBtn.disabled = true;
   optimizedTokens = 0;
   updateStats();
+  updateModelSuggestion(input.value);
   showToast('History item loaded');
 });
 
@@ -391,6 +364,5 @@ chrome.storage.local.get(['lastInput', 'pendingText'], (result) => {
 });
 
 // Initialize
-loadPromptLibrary();
 loadClipboardHistory();
 updateStats();

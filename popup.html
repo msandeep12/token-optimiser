@@ -212,43 +212,6 @@
       color: #fff;
     }
 
-    .library {
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #252525;
-      border-radius: 6px;
-    }
-
-    .library-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .library-input,
-    .library-select {
-      width: 100%;
-      padding: 10px;
-      background: #2a2a2a;
-      border: 1px solid #444;
-      border-radius: 6px;
-      color: #e0e0e0;
-      font-size: 13px;
-    }
-
-    .library-input:focus,
-    .library-select:focus {
-      outline: none;
-      border-color: #666;
-    }
-
-    .library-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
     .small-btn {
       padding: 10px;
       font-size: 13px;
@@ -281,6 +244,54 @@
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: 8px;
+    }
+
+    .model-suggest {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #252525;
+      border-radius: 6px;
+    }
+
+    .model-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .model-card {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 10px;
+    }
+
+    .model-tag {
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 4px;
+    }
+
+    .model-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .model-reason {
+      font-size: 11px;
+      color: #b5b5b5;
+      line-height: 1.35;
+    }
+
+    .model-note {
+      font-size: 11px;
+      color: #888;
+      line-height: 1.35;
     }
   </style>
 </head>
@@ -332,23 +343,6 @@
     <textarea id="output" readonly aria-label="Optimized prompt result"></textarea>
   </div>
 
-  <div class="library">
-    <span class="level-label">Prompt Library</span>
-    <div class="library-row">
-      <input id="promptNameInput" class="library-input" type="text" maxlength="80" placeholder="Prompt name (e.g., Standup Summary)" aria-label="Prompt name">
-      <button id="savePromptBtn" class="primary small-btn" title="Save current input">Save</button>
-    </div>
-    <div class="library-row">
-      <select id="savedPromptsSelect" class="library-select" aria-label="Saved prompts">
-        <option value="">Select saved prompt...</option>
-      </select>
-    </div>
-    <div class="library-actions">
-      <button id="loadPromptBtn" class="small-btn" title="Load selected prompt">Load</button>
-      <button id="deletePromptBtn" class="secondary small-btn" title="Delete selected prompt">Delete</button>
-    </div>
-  </div>
-
   <div class="history">
     <span class="level-label">Clipboard History</span>
     <select id="historySelect" class="history-select" aria-label="Clipboard history">
@@ -359,6 +353,23 @@
       <button id="copyHistoryBtn" class="small-btn" title="Copy selected history item">Copy</button>
       <button id="clearHistoryBtn" class="secondary small-btn" title="Clear clipboard history">Clear</button>
     </div>
+  </div>
+
+  <div class="model-suggest">
+    <span class="level-label">Model Suggestion</span>
+    <div class="model-grid">
+      <div class="model-card">
+        <span class="model-tag">Best Quality</span>
+        <div id="bestQualityModel" class="model-name">-</div>
+        <div id="bestQualityReason" class="model-reason">Add a prompt to get a recommendation.</div>
+      </div>
+      <div class="model-card">
+        <span class="model-tag">Best Value</span>
+        <div id="bestValueModel" class="model-name">-</div>
+        <div id="bestValueReason" class="model-reason">Add a prompt to get a recommendation.</div>
+      </div>
+    </div>
+    <div id="modelSuggestNote" class="model-note">Heuristic recommendation using prompt type and length.</div>
   </div>
   
   <div id="toast" class="toast">Copied!</div>
