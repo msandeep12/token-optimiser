@@ -20,6 +20,17 @@
         injectOptimizationUI(selection);
         sendResponse({ success: true });
       }
+      return;
+    }
+
+    if (request.action === 'copyOptimizedText') {
+      const text = request.text || '';
+      navigator.clipboard.writeText(text).then(() => {
+        sendResponse({ success: true });
+      }).catch(() => {
+        sendResponse({ success: false });
+      });
+      return true;
     }
   });
 

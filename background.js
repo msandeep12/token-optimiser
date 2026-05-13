@@ -1,32 +1,43 @@
 // Background Service Worker for Chrome Extension
 importScripts('optimizer-core.js');
 
-// Create context menu items
-chrome.contextMenus.create({
-  id: "tokenizer-main",
-  title: "Token Optimizer",
-  contexts: ["selection"]
+function createContextMenus() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'tokenizer-main',
+      title: 'Token Optimizer',
+      contexts: ['selection']
+    });
+
+    chrome.contextMenus.create({
+      id: 'tokenizer-optimize',
+      title: 'Optimize Text',
+      parentId: 'tokenizer-main',
+      contexts: ['selection']
+    });
+
+    chrome.contextMenus.create({
+      id: 'tokenizer-count',
+      title: 'Count Tokens',
+      parentId: 'tokenizer-main',
+      contexts: ['selection']
+    });
+
+    chrome.contextMenus.create({
+      id: 'tokenizer-copy-optimized',
+      title: 'Optimize & Copy',
+      parentId: 'tokenizer-main',
+      contexts: ['selection']
+    });
+  });
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  createContextMenus();
 });
 
-chrome.contextMenus.create({
-  id: "tokenizer-optimize",
-  title: "Optimize Text",
-  parentId: "tokenizer-main",
-  contexts: ["selection"]
-});
-
-chrome.contextMenus.create({
-  id: "tokenizer-count",
-  title: "Count Tokens",
-  parentId: "tokenizer-main",
-  contexts: ["selection"]
-});
-
-chrome.contextMenus.create({
-  id: "tokenizer-copy-optimized",
-  title: "Optimize & Copy",
-  parentId: "tokenizer-main",
-  contexts: ["selection"]
+chrome.runtime.onStartup.addListener(() => {
+  createContextMenus();
 });
 
 // Handle context menu clicks
@@ -75,18 +86,31 @@ function optimizeAndCopy(text, tabId) {
     lastOptimized: optimized,
     lastTokens: TokenOptimizer.estimateTokens(optimized)
   });
-  
-  // Copy to clipboard
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(optimized).then(() => {
+
+  if (!tabId) return;
+
+  chrome.tabs.sendMessage(
+    tabId,
+    { action: 'copyOptimizedText', text: optimized },
+    () => {
+      if (chrome.runtime.lastError) {
+        chrome.notifications.create({
+          type: 'basic',
+          iconUrl: 'icons/icon128.svg',
+          title: 'Copy Failed',
+          message: 'Unable to copy on this page. Use popup Copy button.'
+        });
+        return;
+      }
+
       chrome.notifications.create({
         type: 'basic',
         iconUrl: 'icons/icon128.svg',
         title: 'Copied to Clipboard',
         message: 'Optimized text copied!'
       });
-    });
-  }
+    }
+  );
 }
 
 // Listen for tab updates to inject content script on AI sites
